@@ -1,0 +1,114 @@
+{% extends "base.html" %}
+{% block title %}About &mdash; PulmoScan AI{% endblock %}
+
+{% block content %}
+<section class="hero hero-compact">
+  <p class="eyebrow">Model card</p>
+  <h1>About PulmoScan AI</h1>
+  <p class="hero-sub">
+    A transparent look at how this demo model was built, trained, and
+    evaluated &mdash; and where its limits are.
+  </p>
+</section>
+
+<section class="about-grid">
+  <div class="info-card">
+    <h3>Architecture</h3>
+    <p class="info-value">DenseNet121</p>
+    <p>A densely-connected convolutional network where each layer receives
+    the feature maps of all preceding layers, chosen for strong performance
+    on medical imaging tasks with efficient parameter use.</p>
+  </div>
+
+  <div class="info-card">
+    <h3>Framework</h3>
+    <p class="info-value">PyTorch &amp; torchvision</p>
+    <p>Model definition, training loop, and inference are all implemented
+    in PyTorch, with torchvision supplying the DenseNet121 backbone and
+    image transforms.</p>
+  </div>
+
+  <div class="info-card">
+    <h3>Transfer learning</h3>
+    <p class="info-value">ImageNet-pretrained backbone</p>
+    <p>The convolutional backbone started from ImageNet-pretrained weights.
+    The final classifier layer was replaced with a 2-class linear head and
+    fine-tuned on chest X-ray data.</p>
+  </div>
+
+  <div class="info-card">
+    <h3>Task</h3>
+    <p class="info-value">Binary classification</p>
+    <p>Each chest X-ray is classified as <strong>Normal</strong> or
+    <strong>Suspicious</strong> (mass or nodule), using images resized to
+    224&times;224 and normalized with standard ImageNet statistics.</p>
+  </div>
+</section>
+
+<section class="training-note">
+  <h2>Training data</h2>
+  <p>
+    The model was trained on publicly available chest X-ray datasets,
+    split into training, validation, and test sets. Class imbalance
+    between normal and suspicious cases was addressed with weighted
+    sampling during training. Data augmentation (flips, small rotations,
+    affine jitter, and brightness/contrast jitter) was used to improve
+    robustness.
+  </p>
+</section>
+
+<section class="metrics-section">
+  <h2>Evaluation metrics</h2>
+  <p class="metrics-intro">
+    Measured on a held-out test set that the model never saw during
+    training.
+  </p>
+
+  <div class="metrics-grid">
+    <div class="metric-card">
+      <span class="metric-label">Accuracy</span>
+      <span class="metric-number">87.0%</span>
+    </div>
+    <div class="metric-card">
+      <span class="metric-label">Precision</span>
+      <span class="metric-number">54.3%</span>
+    </div>
+    <div class="metric-card">
+      <span class="metric-label">Recall</span>
+      <span class="metric-number">41.2%</span>
+    </div>
+    <div class="metric-card">
+      <span class="metric-label">F1 Score</span>
+      <span class="metric-number">46.8%</span>
+    </div>
+    <div class="metric-card">
+      <span class="metric-label">Sensitivity</span>
+      <span class="metric-number">41.2%</span>
+    </div>
+    <div class="metric-card">
+      <span class="metric-label">Specificity</span>
+      <span class="metric-number">94.4%</span>
+    </div>
+    <div class="metric-card metric-card-wide">
+      <span class="metric-label">ROC&ndash;AUC</span>
+      <span class="metric-number">0.798</span>
+    </div>
+  </div>
+
+  <p class="metrics-caveat">
+    Recall/sensitivity on the suspicious class is limited, meaning the
+    model misses a meaningful share of suspicious cases in this
+    evaluation. This is exactly why the tool is a research demonstration,
+    not a diagnostic aid.
+  </p>
+</section>
+
+<section class="about-disclaimer">
+  <p>
+    &#9888; PulmoScan AI is an educational and research demonstration only.
+    It is not FDA approved, is not a medical device, and must never be
+    used to diagnose disease or guide treatment. Always consult a licensed
+    healthcare professional.
+  </p>
+</section>
+{% endblock %}

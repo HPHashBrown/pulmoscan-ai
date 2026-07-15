@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{% block title %}Lung X-ray AI Classifier{% endblock %}</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+
+<div class="disclaimer-banner">
+  <div class="disclaimer-inner">
+    <span class="disclaimer-icon">&#9888;</span>
+    <div class="disclaimer-text">
+      <strong>Disclaimer:</strong>
+      This application is an AI demonstration created for educational and research purposes only.
+      It is <strong>NOT FDA approved</strong>. It is <strong>NOT a medical device</strong>. It must
+      <strong>NOT</strong> be used to diagnose disease. Always consult a licensed healthcare professional.
+    </div>
+  </div>
+</div>
+
+<header class="site-header">
+  <div class="header-inner">
+    <a href="{{ url_for('index') }}" class="brand">
+      <span class="brand-mark" aria-hidden="true">
+        <svg width="26" height="26" viewBox="0 0 26 26" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="13" cy="13" r="11.5" stroke="currentColor" stroke-width="1.6"/>
+          <path d="M8 13.5C9 10.5 10 9 11.5 9C13.5 9 12.5 17 14.5 17C16 17 17 15.5 18 12.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </span>
+      <span class="brand-text">PulmoScan&nbsp;AI</span>
+    </a>
+    <nav class="site-nav">
+      <a href="{{ url_for('index') }}" class="{{ 'active' if request.path == url_for('index') else '' }}">Upload</a>
+      <a href="{{ url_for('about') }}" class="{{ 'active' if request.path == url_for('about') else '' }}">About</a>
+    </nav>
+  </div>
+</header>
+
+<main class="page">
+  {% block content %}{% endblock %}
+</main>
+
+<footer class="site-footer">
+  <p>PulmoScan AI &mdash; an educational demonstration project. Not for clinical use.</p>
+</footer>
+
+</body>
+</html>

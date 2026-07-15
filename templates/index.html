@@ -1,0 +1,155 @@
+{% extends "base.html" %}
+{% block title %}Upload X-ray &mdash; PulmoScan AI{% endblock %}
+
+{% block content %}
+<section class="hero">
+  <p class="eyebrow">DenseNet121 &middot; Binary Classifier &middot; Demo</p>
+  <h1>See what the model sees in a chest X-ray.</h1>
+  <p class="hero-sub">
+    Upload a chest X-ray image and PulmoScan AI will classify it as
+    <strong>Normal</strong> or <strong>Suspicious</strong> (mass or nodule),
+    with a confidence score. Built for education and research &mdash; not for
+    clinical decisions.
+  </p>
+</section>
+
+{% if model_error %}
+<div class="alert alert-error" role="alert">
+  <strong>Model unavailable:</strong> {{ model_error }}
+</div>
+{% endif %}
+
+{% if upload_error %}
+<div class="alert alert-error" role="alert">
+  {{ upload_error }}
+</div>
+{% endif %}
+
+<section class="upload-card" aria-label="Upload chest X-ray">
+  <form id="upload-form" action="{{ url_for('analyze') }}" method="POST" enctype="multipart/form-data">
+
+    <div id="dropzone" class="dropzone">
+      <input type="file" id="file-input" name="xray" accept=".png,.jpg,.jpeg,image/png,image/jpeg" hidden>
+
+      <div id="dropzone-empty" class="dropzone-empty">
+        <div class="dropzone-frame" aria-hidden="true">
+          <span class="corner corner-tl"></span>
+          <span class="corner corner-tr"></span>
+          <span class="corner corner-bl"></span>
+          <span class="corner corner-br"></span>
+          <svg width="40" height="40" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M20 26V10M20 10L14 16M20 10L26 16" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M8 26V29C8 30.1046 8.89543 31 10 31H30C31.1046 31 32 30.1046 32 29V26" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </div>
+        <p class="dropzone-title">Drag &amp; drop a chest X-ray</p>
+        <p class="dropzone-sub">or</p>
+        <button type="button" id="browse-btn" class="btn btn-primary">Choose image</button>
+        <p class="dropzone-formats">Supports PNG, JPG, JPEG &middot; up to 10&nbsp;MB</p>
+      </div>
+
+      <div id="dropzone-preview" class="dropzone-preview" hidden>
+        <img id="preview-image" src="" alt="Preview of uploaded X-ray">
+        <div class="preview-actions">
+          <span id="preview-filename" class="preview-filename"></span>
+          <button type="button" id="change-btn" class="btn btn-ghost">Change image</button>
+        </div>
+      </div>
+    </div>
+
+    <button type="submit" id="analyze-btn" class="btn btn-primary btn-block btn-large" disabled>
+      Analyze X-ray
+    </button>
+
+    <p class="upload-disclaimer">
+      &#9888; For educational and research purposes only. Not a substitute for
+      professional medical evaluation.
+    </p>
+  </form>
+
+  <div id="loading-overlay" class="loading-overlay" hidden>
+    <div class="spinner" aria-hidden="true"></div>
+    <p>Analyzing X-ray&hellip;</p>
+  </div>
+</section>
+
+<script>
+(function () {
+  const dropzone = document.getElementById('dropzone');
+  const fileInput = document.getElementById('file-input');
+  const browseBtn = document.getElementById('browse-btn');
+  const changeBtn = document.getElementById('change-btn');
+  const emptyState = document.getElementById('dropzone-empty');
+  const previewState = document.getElementById('dropzone-preview');
+  const previewImage = document.getElementById('preview-image');
+  const previewFilename = document.getElementById('preview-filename');
+  const analyzeBtn = document.getElementById('analyze-btn');
+  const form = document.getElementById('upload-form');
+  const loadingOverlay = document.getElementById('loading-overlay');
+
+  function showPreview(file) {
+    if (!file) return;
+    const validTypes = ['image/png', 'image/jpeg'];
+    if (!validTypes.includes(file.type)) {
+      alert('Please upload a PNG, JPG, or JPEG image.');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = function (e) {
+      previewImage.src = e.target.result;
+      previewFilename.textContent = file.name;
+      emptyState.hidden = true;
+      previewState.hidden = false;
+      analyzeBtn.disabled = false;
+    };
+    reader.readAsDataURL(file);
+  }
+
+  browseBtn.addEventListener('click', () => fileInput.click());
+  changeBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    fileInput.value = '';
+    emptyState.hidden = false;
+    previewState.hidden = true;
+    analyzeBtn.disabled = true;
+  });
+
+  fileInput.addEventListener('change', () => {
+    if (fileInput.files && fileInput.files[0]) {
+      showPreview(fileInput.files[0]);
+    }
+  });
+
+  ['dragenter', 'dragover'].forEach(evt => {
+    dropzone.addEventListener(evt, (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      dropzone.classList.add('dropzone-active');
+    });
+  });
+
+  ['dragleave', 'drop'].forEach(evt => {
+    dropzone.addEventListener(evt, (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      dropzone.classList.remove('dropzone-active');
+    });
+  });
+
+  dropzone.addEventListener('drop', (e) => {
+    const file = e.dataTransfer.files && e.dataTransfer.files[0];
+    if (file) {
+      fileInput.files = e.dataTransfer.files;
+      showPreview(file);
+    }
+  });
+
+  form.addEventListener('submit', () => {
+    if (!fileInput.files || !fileInput.files[0]) return;
+    loadingOverlay.hidden = false;
+    analyzeBtn.disabled = true;
+  });
+})();
+</script>
+{% endblock %}

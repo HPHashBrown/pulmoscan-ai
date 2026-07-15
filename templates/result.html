@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+{% block title %}Result &mdash; PulmoScan AI{% endblock %}
+
+{% block content %}
+<section class="hero hero-compact">
+  <p class="eyebrow">Analysis complete</p>
+  <h1>Here&rsquo;s what the model found.</h1>
+</section>
+
+<section class="result-grid">
+
+  <div class="result-image-card">
+    <img src="{{ image_data_uri }}" alt="Uploaded chest X-ray">
+  </div>
+
+  <div class="result-summary-card result-{{ 'normal' if prediction == 'Normal' else 'suspicious' }}">
+    <span class="result-badge">
+      {% if prediction == 'Normal' %}
+        <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M4 10.5L8 14.5L16 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      {% else %}
+        <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M10 6V11" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="10" cy="14.2" r="1" fill="currentColor"/><circle cx="10" cy="10" r="8.5" stroke="currentColor" stroke-width="1.4"/></svg>
+      {% endif %}
+      {{ prediction }}
+    </span>
+
+    <div class="confidence-block">
+      <div class="confidence-label">
+        <span>Model confidence</span>
+        <span class="confidence-value">{{ confidence }}%</span>
+      </div>
+      <div class="confidence-bar-track">
+        <div class="confidence-bar-fill" style="width: {{ confidence }}%;"></div>
+      </div>
+    </div>
+
+    <p class="result-disclaimer">
+      &#9888; This AI is intended only for educational and research purposes
+      and must not be used as a substitute for professional medical evaluation.
+    </p>
+  </div>
+</section>
+
+<section class="explanation-card">
+  <h2>What does this mean?</h2>
+  {% if prediction == 'Normal' %}
+    <p>
+      The model did not detect image features resembling a suspicious mass
+      or nodule in this X-ray.
+    </p>
+    <p>
+      <strong>This does not guarantee the absence of disease.</strong>
+      The AI only recognizes patterns similar to what it saw during
+      training, and subtle or atypical findings can be missed. A normal
+      result from this tool is not a clean bill of health.
+    </p>
+  {% else %}
+    <p>
+      The AI detected features similar to masses or nodules found in its
+      training data.
+    </p>
+    <p>
+      <strong>We recommend consulting a qualified healthcare
+      professional</strong> to properly evaluate this X-ray.
+    </p>
+    <p>
+      This result is <strong>not a diagnosis</strong>. It reflects a
+      statistical pattern match from a machine learning model, not a
+      clinical assessment.
+    </p>
+  {% endif %}
+</section>
+
+<div class="result-actions">
+  <a href="{{ url_for('index') }}" class="btn btn-primary">Analyze another X-ray</a>
+  <a href="{{ url_for('about') }}" class="btn btn-ghost">About this model</a>
+</div>
+{% endblock %}
