@@ -32,7 +32,7 @@ from predict import (
     allowed_file,
     load_image,
     predict_image,
-    generate_gradcam,
+    predict_with_gradcam,
     InvalidImageError,
 )
 from report import build_pdf_report
@@ -54,6 +54,21 @@ try:
     model, device = load_model()
     logger.info("Lung X-ray model loaded successfully on %s.", device)
     MODEL_LOAD_ERROR = None
+
+    # Run one dummy prediction + Grad-CAM pass now, at startup. The very
+    # first inference in a fresh process pays a one-time CPU kernel/JIT
+    # warmup cost (observed ~4s locally, likely more on a slow free-tier
+    # host) - paying it here means a real user's first request doesn't
+    # have to, which matters a lot against a request timeout.
+    try:
+        from PIL import Image as _Image
+        from predict import predict_with_gradcam as _warmup_predict
+        _dummy_image = _Image.new("RGB", (224, 224), color=(128, 128, 128))
+        _warmup_predict(model, device, _dummy_image)
+        logger.info("Model warmup pass complete.")
+    except Exception:  # noqa: BLE001 - warmup failing shouldn't block startup
+        logger.exception("Model warmup pass failed (non-fatal).")
+
 except Exception as exc:  # noqa: BLE001 - want to surface any load failure
     model, device = None, None
     MODEL_LOAD_ERROR = str(exc)
@@ -136,8 +151,7 @@ def analyze():
         return render_template("index.html", model_error=MODEL_LOAD_ERROR, upload_error=str(exc))
 
     try:
-        result = predict_image(model, device, image)
-        gradcam_data_uri = generate_gradcam(model, device, image)
+        result, gradcam_data_uri = predict_with_gradcam(model, device, image)
     except Exception:  # noqa: BLE001
         logger.exception("Inference failed for uploaded file %s", filename)
         return render_template(
