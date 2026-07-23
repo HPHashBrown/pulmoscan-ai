@@ -4,13 +4,15 @@ app.py
 Flask application for the AI Lung X-ray Classifier demo.
 
 Routes:
-    GET  /            Upload page
-    POST /analyze      Server-rendered results page (browser form flow)
-    POST /predict       JSON API endpoint
-    GET  /about         About / model info page
+    GET  /               Upload page
+    POST /analyze         Server-rendered results page (browser form flow)
+    POST /predict          JSON API endpoint
+    POST /download-report   PDF download of a result
+    GET  /about             About / model info page
 
-Inference logic lives in predict.py, model loading lives in model.py.
-This file only wires HTTP requests to that logic and handles errors.
+Inference logic lives in predict.py, model loading lives in model.py,
+PDF generation lives in report.py. This file only wires HTTP requests
+to that logic and handles errors.
 """
 
 import base64
@@ -21,6 +23,7 @@ from flask import (
     render_template,
     request,
     jsonify,
+    send_file,
 )
 from werkzeug.exceptions import RequestEntityTooLarge
 
@@ -29,14 +32,20 @@ from predict import (
     allowed_file,
     load_image,
     predict_image,
+    generate_gradcam,
     InvalidImageError,
 )
+from report import build_pdf_report
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
 app.config["MAX_CONTENT_LENGTH"] = 10 * 1024 * 1024  # 10 MB upload limit
+# The /download-report form carries base64-encoded images as hidden
+# fields, which are larger than Werkzeug's newer default 500KB cap on
+# in-memory form field data. Raise it to match MAX_CONTENT_LENGTH.
+app.config["MAX_FORM_MEMORY_SIZE"] = 10 * 1024 * 1024
 
 # -----------------------
 # Load the model once, at startup
@@ -128,6 +137,7 @@ def analyze():
 
     try:
         result = predict_image(model, device, image)
+        gradcam_data_uri = generate_gradcam(model, device, image)
     except Exception:  # noqa: BLE001
         logger.exception("Inference failed for uploaded file %s", filename)
         return render_template(
@@ -146,6 +156,7 @@ def analyze():
         prediction=result["prediction"],
         confidence=result["confidence"],
         image_data_uri=image_data_uri,
+        gradcam_data_uri=gradcam_data_uri,
         explanation=EXPLANATIONS[result["prediction"]],
     )
 
@@ -170,6 +181,45 @@ def predict():
     return jsonify(result)
 
 
+@app.route("/download-report", methods=["POST"])
+def download_report():
+    """
+    Generate a PDF summary of a result the browser already has (image,
+    Grad-CAM heatmap, prediction, confidence) and send it as a download.
+    Nothing is re-run through the model here; this just packages up
+    data the /analyze page already computed.
+    """
+    prediction = request.form.get("prediction")
+    confidence = request.form.get("confidence")
+    image_data_uri = request.form.get("image_data_uri")
+    gradcam_data_uri = request.form.get("gradcam_data_uri")
+
+    if not all([prediction, confidence, image_data_uri, gradcam_data_uri]):
+        return "Missing data for report.", 400
+
+    if prediction not in EXPLANATIONS:
+        return "Invalid prediction value.", 400
+
+    try:
+        pdf_buffer = build_pdf_report(
+            prediction=prediction,
+            confidence=float(confidence),
+            image_data_uri=image_data_uri,
+            gradcam_data_uri=gradcam_data_uri,
+            explanation=EXPLANATIONS[prediction],
+        )
+    except Exception:  # noqa: BLE001
+        logger.exception("Failed to build PDF report")
+        return "Could not generate the PDF report. Please try again.", 500
+
+    return send_file(
+        pdf_buffer,
+        mimetype="application/pdf",
+        as_attachment=True,
+        download_name="pulmoscan-ai-report.pdf",
+    )
+
+
 @app.errorhandler(RequestEntityTooLarge)
 def handle_large_file(_exc):
     return render_template(
@@ -189,4 +239,9 @@ def handle_server_error(_exc):
 
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    import os as _os
+    port = int(_os.environ.get("PORT", 5000))
+    # debug=False is required for any public deployment: Flask's debugger
+    # exposes an interactive code console on error pages, which is a
+    # serious security risk if the site is reachable by anyone else.
+    app.run(host="0.0.0.0", port=port, debug=False)
