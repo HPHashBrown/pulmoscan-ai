@@ -1,4 +1,15 @@
 Flask>=3.0
 Pillow>=10.0
 numpy>=1.26
-gunicorn>=21.2
+gunicorn>=21.2; sys_platform != "win32"
+reportlab>=4.0
+
+# NOTE: torch and torchvision are intentionally NOT listed here.
+# On a memory-constrained host (e.g. Render's free tier), install the
+# lightweight CPU-only build explicitly instead of relying on this file:
+#
+#   pip install torch torchvision --index-url https://download.pytorch.org/whl/cpu
+#   pip install -r requirements.txt
+#
+# For local development, plain `pip install torch torchvision` (as used
+# above) works fine too and is simpler if disk/memory isn't a concern.
