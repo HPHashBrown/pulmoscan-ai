@@ -10,7 +10,13 @@
 <section class="result-grid">
 
   <div class="result-image-card">
-    <img src="{{ image_data_uri }}" alt="Uploaded chest X-ray">
+    <div class="image-toggle-wrap">
+      <img id="result-image" src="{{ image_data_uri }}" alt="Uploaded chest X-ray">
+      <div class="image-toggle" role="group" aria-label="Toggle heatmap view">
+        <button type="button" id="toggle-original" class="image-toggle-btn active">Original</button>
+        <button type="button" id="toggle-heatmap" class="image-toggle-btn">Grad-CAM</button>
+      </div>
+    </div>
   </div>
 
   <div class="result-summary-card result-{{ 'normal' if prediction == 'Normal' else 'suspicious' }}">
@@ -68,10 +74,58 @@
       clinical assessment.
     </p>
   {% endif %}
+  <p class="gradcam-note">
+    &#128161; Tip: switch the image above to <strong>Grad-CAM</strong> to see
+    which regions of the X-ray most influenced this result.
+  </p>
 </section>
 
 <div class="result-actions">
   <a href="{{ url_for('index') }}" class="btn btn-primary">Analyze another X-ray</a>
   <a href="{{ url_for('about') }}" class="btn btn-ghost">About this model</a>
+  <form id="report-form" action="{{ url_for('download_report') }}" method="POST">
+    <input type="hidden" name="prediction" value="{{ prediction }}">
+    <input type="hidden" name="confidence" value="{{ confidence }}">
+    <input type="hidden" name="image_data_uri" value="{{ image_data_uri }}">
+    <input type="hidden" name="gradcam_data_uri" value="{{ gradcam_data_uri }}">
+    <button type="submit" class="btn btn-ghost" id="download-pdf-btn">
+      Download PDF report
+    </button>
+  </form>
 </div>
+
+<script>
+(function () {
+  const resultImage = document.getElementById('result-image');
+  const originalBtn = document.getElementById('toggle-original');
+  const heatmapBtn = document.getElementById('toggle-heatmap');
+  const originalSrc = {{ image_data_uri | tojson }};
+  const heatmapSrc = {{ gradcam_data_uri | tojson }};
+
+  originalBtn.addEventListener('click', () => {
+    resultImage.src = originalSrc;
+    originalBtn.classList.add('active');
+    heatmapBtn.classList.remove('active');
+  });
+
+  heatmapBtn.addEventListener('click', () => {
+    resultImage.src = heatmapSrc;
+    heatmapBtn.classList.add('active');
+    originalBtn.classList.remove('active');
+  });
+
+  const reportForm = document.getElementById('report-form');
+  const downloadBtn = document.getElementById('download-pdf-btn');
+  reportForm.addEventListener('submit', () => {
+    downloadBtn.disabled = true;
+    downloadBtn.textContent = 'Preparing PDF\u2026';
+    // Re-enable shortly after in case the download doesn't trigger a
+    // navigation (it won't, since this downloads a file in place).
+    setTimeout(() => {
+      downloadBtn.disabled = false;
+      downloadBtn.textContent = 'Download PDF report';
+    }, 2500);
+  });
+})();
+</script>
 {% endblock %}
