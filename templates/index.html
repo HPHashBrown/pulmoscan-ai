@@ -73,6 +73,40 @@
   </div>
 </section>
 
+<section class="examples-section" aria-label="Try example X-rays">
+  <h2 class="examples-title">Don&rsquo;t have an X-ray handy? Try a sample.</h2>
+  <p class="examples-sub">
+    Six real chest X-rays from the ChestX-ray8 dataset &mdash; pick one to
+    see how the model classifies it.
+  </p>
+  <div class="examples-grid">
+    <button type="button" class="example-card" data-example="example-normal-1">
+      <img src="{{ url_for('static', filename='examples/example-normal-1-thumb.jpg') }}" alt="Sample chest X-ray 1">
+      <span>Sample 1</span>
+    </button>
+    <button type="button" class="example-card" data-example="example-normal-2">
+      <img src="{{ url_for('static', filename='examples/example-normal-2-thumb.jpg') }}" alt="Sample chest X-ray 2">
+      <span>Sample 2</span>
+    </button>
+    <button type="button" class="example-card" data-example="example-normal-3">
+      <img src="{{ url_for('static', filename='examples/example-normal-3-thumb.jpg') }}" alt="Sample chest X-ray 3">
+      <span>Sample 3</span>
+    </button>
+    <button type="button" class="example-card" data-example="example-suspicious-1">
+      <img src="{{ url_for('static', filename='examples/example-suspicious-1-thumb.jpg') }}" alt="Sample chest X-ray 4">
+      <span>Sample 4</span>
+    </button>
+    <button type="button" class="example-card" data-example="example-suspicious-2">
+      <img src="{{ url_for('static', filename='examples/example-suspicious-2-thumb.jpg') }}" alt="Sample chest X-ray 5">
+      <span>Sample 5</span>
+    </button>
+    <button type="button" class="example-card" data-example="example-suspicious-3">
+      <img src="{{ url_for('static', filename='examples/example-suspicious-3-thumb.jpg') }}" alt="Sample chest X-ray 6">
+      <span>Sample 6</span>
+    </button>
+  </div>
+</section>
+
 <script>
 (function () {
   const dropzone = document.getElementById('dropzone');
@@ -86,6 +120,7 @@
   const analyzeBtn = document.getElementById('analyze-btn');
   const form = document.getElementById('upload-form');
   const loadingOverlay = document.getElementById('loading-overlay');
+  const uploadCard = document.querySelector('.upload-card');
 
   function showPreview(file) {
     if (!file) return;
@@ -149,6 +184,33 @@
     if (!fileInput.files || !fileInput.files[0]) return;
     loadingOverlay.hidden = false;
     analyzeBtn.disabled = true;
+  });
+
+  // Example gallery: fetch the full-resolution sample and load it into
+  // the same dropzone/file-input flow as a real upload.
+  document.querySelectorAll('.example-card').forEach((card) => {
+    card.addEventListener('click', async () => {
+      const key = card.getAttribute('data-example');
+      const url = `{{ url_for('static', filename='examples/') }}${key}.png`;
+
+      card.classList.add('example-card-loading');
+      try {
+        const response = await fetch(url);
+        const blob = await response.blob();
+        const file = new File([blob], `${key}.png`, { type: 'image/png' });
+
+        const dataTransfer = new DataTransfer();
+        dataTransfer.items.add(file);
+        fileInput.files = dataTransfer.files;
+
+        showPreview(file);
+        uploadCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      } catch (err) {
+        alert('Could not load that sample image. Please try again.');
+      } finally {
+        card.classList.remove('example-card-loading');
+      }
+    });
   });
 })();
 </script>
