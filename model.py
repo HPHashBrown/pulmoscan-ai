@@ -11,6 +11,16 @@ import torch
 import torch.nn as nn
 from torchvision import models
 
+# On constrained/shared-vCPU hosts (e.g. free-tier cloud instances),
+# PyTorch's default of using every detected CPU core for intra-op
+# parallelism can badly backfire: the host may only actually grant a
+# small fraction of a core, so spinning up many threads causes
+# contention/context-switching overhead rather than speedup. A single
+# small 224x224 image through DenseNet121 doesn't benefit much from
+# multi-threading anyway, so pin it down for consistently fast, low
+# overhead inference regardless of host.
+torch.set_num_threads(1)
+
 # Class order must match the ImageFolder class_to_idx mapping used
 # during training (alphabetical: "normal" -> 0, "suspicious" -> 1).
 CLASS_NAMES = ["Normal", "Suspicious"]
