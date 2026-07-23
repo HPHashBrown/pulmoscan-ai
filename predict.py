@@ -113,6 +113,21 @@ def generate_gradcam(model, device, image: Image.Image) -> str:
     DenseNet121's built-in forward uses an in-place ReLU that's
     incompatible with capturing gradients on the feature map.
     """
+    result, heatmap_uri = predict_with_gradcam(model, device, image)
+    return heatmap_uri
+
+
+def predict_with_gradcam(model, device, image: Image.Image):
+    """
+    Run prediction AND Grad-CAM together, sharing a single forward pass
+    through the model instead of two separate ones. This roughly halves
+    the compute time/memory of a full analysis, which matters a lot on
+    slow or memory-constrained hosts (e.g. free-tier cloud servers) where
+    a naive "predict, then separately re-run for Grad-CAM" approach can
+    be slow enough to trip a request timeout.
+
+    Returns (result_dict, gradcam_data_uri).
+    """
     tensor = INFERENCE_TRANSFORM(image).unsqueeze(0).to(device)
     tensor.requires_grad_(True)
 
@@ -126,7 +141,14 @@ def generate_gradcam(model, device, image: Image.Image) -> str:
     pooled = torch.flatten(pooled, 1)
     logits = model.classifier(pooled)
 
+    probabilities = torch.softmax(logits, dim=1)[0]
     predicted_index = int(torch.argmax(logits, dim=1).item())
+    confidence = float(probabilities[predicted_index].item()) * 100
+    result = {
+        "prediction": CLASS_NAMES[predicted_index],
+        "confidence": round(confidence, 1),
+    }
+
     score = logits[0, predicted_index]
     score.backward()
 
@@ -139,6 +161,11 @@ def generate_gradcam(model, device, image: Image.Image) -> str:
     cam = cam.detach().cpu().numpy()
     if cam.max() > 0:
         cam = cam / cam.max()
+
+    # Free the graph/tensors from this request as soon as we're done
+    # with them, rather than waiting for garbage collection.
+    del tensor, activation, relu_out, pooled, logits, gradient, activation_values
+    model.zero_grad(set_to_none=True)
 
     # Upsample the (7, 7) CAM to full image resolution.
     cam_tensor = torch.tensor(cam)[None, None, :, :]
@@ -158,4 +185,6 @@ def generate_gradcam(model, device, image: Image.Image) -> str:
     buffer = io.BytesIO()
     overlay_image.save(buffer, format="PNG")
     encoded = base64.b64encode(buffer.getvalue()).decode("utf-8")
-    return f"data:image/png;base64,{encoded}"
+    gradcam_data_uri = f"data:image/png;base64,{encoded}"
+
+    return result, gradcam_data_uri
